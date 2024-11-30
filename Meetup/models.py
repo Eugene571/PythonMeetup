@@ -3,13 +3,12 @@ from django.utils.timezone import now
 
 
 class User(models.Model):
-    telegram_id = models.IntegerField(
+    telegram_id = models.BigIntegerField(
         verbose_name="телеграм id",
-        max_length=50,
         blank=True,
         unique=True,
         db_index=True
-        )
+    )
     tg_nick = models.CharField(
         verbose_name='Ник в телеграм',
         max_length=50,
@@ -20,34 +19,38 @@ class User(models.Model):
         max_length=100,
         null=True,
         blank=False
-        )
+    )
+    is_speaker = models.BooleanField(
+        default=False,
+        verbose_name="Является ли пользователь докладчиком"
+    )
 
     def __str__(self) -> str:
-        return f"{self.name} - {self.tg_id}"
+        return f"{self.username} - {self.telegram_id}"
 
 
 class Speaker(models.Model):
     """Модель для представления докладчика."""
-    telegram_id = models.ForeignKey(
+    user = models.ForeignKey(
         User,
         on_delete=models.DO_NOTHING,
-        related_name='tg_id',
+        related_name='speakers',
         null=True,
         blank=True,
         default=False
-        )
+    )
     name = models.CharField(
         max_length=255,
         verbose_name="Имя докладчика"
-        )
+    )
     bio = models.TextField(
         blank=True,
         verbose_name="Биография"
-        )
+    )
     contact = models.EmailField(
         blank=True,
         verbose_name="Контактный email"
-        )
+    )
 
     def __str__(self):
         return self.name
