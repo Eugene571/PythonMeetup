@@ -1,4 +1,6 @@
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram._update import Update
+from telegram._inline.inlinekeyboardbutton import InlineKeyboardButton
+from telegram._inline.inlinekeyboardmarkup import  InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, MessageHandler, filters, ContextTypes
 import logging
 
@@ -7,14 +9,16 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-registered_users = set(['karaman56', '@eugenedow'])  # Пример зарегистрированных пользователей
-user_ids = set()  #  для хранения идентификаторов пользователей
+registered_users = {'karaman56', '@eugenedow'}  # Пример зарегистрированных пользователей
+user_ids = set()  # для хранения идентификаторов пользователей
 user_states = {}  # для хранения состояния пользователей
 reports = ['Бухать под селедочку', 'Бухать по черному']
 waiting_for_question = set()  # Пользователи, ожидающие ввода вопроса
 
+
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text('Привет! Используйте команду /register для регистрации.')
+
 
 async def register(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_name = update.effective_user.username
@@ -30,6 +34,7 @@ async def register(update: Update, context: ContextTypes.DEFAULT_TYPE):
         user_states[user_id] = 'listener'  # Устанавливаем состояние как слушатель
     await show_menu_for_user(user_id, update.message, context)
 
+
 async def show_speaker_menu(chat_id, context: ContextTypes.DEFAULT_TYPE) -> None:
     keyboard = [
         [InlineKeyboardButton("Расписание докладов", callback_data='schedule')],
@@ -41,6 +46,7 @@ async def show_speaker_menu(chat_id, context: ContextTypes.DEFAULT_TYPE) -> None
     await context.bot.send_message(chat_id=chat_id, text='Вы в меню докладчика! Выберите действие:',
                                    reply_markup=reply_markup)
 
+
 async def show_listener_menu(chat_id, context: ContextTypes.DEFAULT_TYPE) -> None:
     keyboard = [
         [InlineKeyboardButton("Расписание докладов", callback_data='schedule')],
@@ -48,6 +54,7 @@ async def show_listener_menu(chat_id, context: ContextTypes.DEFAULT_TYPE) -> Non
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await context.bot.send_message(chat_id=chat_id, text='Вы в меню слушателя!', reply_markup=reply_markup)
+
 
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
@@ -72,6 +79,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         # После любого действия, обновляем меню для всех
         await update_menus_for_all_users(context)
 
+
 async def text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_id = update.effective_user.id
 
@@ -84,12 +92,14 @@ async def text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         waiting_for_question.remove(user_id)
         await update_menus_for_all_users(context)
 
+
 async def notify_all_users(context: ContextTypes.DEFAULT_TYPE, message: str):
     for user_id in user_ids:
         try:
             await context.bot.send_message(chat_id=user_id, text=message)
         except Exception as e:
             logger.error(f"Ошибка при отправке сообщения пользователю {user_id}: {e}")
+
 
 async def update_menus_for_all_users(context: ContextTypes.DEFAULT_TYPE):
     for user_id in user_ids:
@@ -98,11 +108,13 @@ async def update_menus_for_all_users(context: ContextTypes.DEFAULT_TYPE):
         else:
             await show_listener_menu(user_id, context)
 
+
 async def show_menu_for_user(user_id: int, message, context: ContextTypes.DEFAULT_TYPE) -> None:
     if user_states.get(user_id) == 'speaker':
         await show_speaker_menu(message.chat_id, context)
     else:
         await show_listener_menu(message.chat_id, context)
+
 
 def main():
     TOKEN = '7825479539:AAHTshs9UnHl3Rih2DNol6NFnEj-q5K7UrE'
@@ -113,6 +125,7 @@ def main():
     application.add_handler(
         MessageHandler(filters.TEXT & ~filters.COMMAND, text_handler))
     application.run_polling()
+
 
 if __name__ == '__main__':
     main()
