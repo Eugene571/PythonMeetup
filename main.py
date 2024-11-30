@@ -11,6 +11,8 @@ from django.utils import timezone
 from django.utils.timezone import localdate
 from dotenv import load_dotenv
 from Meetup.models import User, Event, Speaker, Question
+import gunicorn
+
 # Настройка логирования
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
