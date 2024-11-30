@@ -1,5 +1,6 @@
 from django.db import models
 from django.utils.timezone import now
+from django.utils import timezone
 
 
 class User(models.Model):
@@ -21,6 +22,8 @@ class User(models.Model):
         blank=False
     )
     is_speaker = models.BooleanField(
+        null=True,
+        blank=True,
         default=False,
         verbose_name="Является ли пользователь докладчиком"
     )
@@ -95,10 +98,13 @@ class Event(models.Model):
         verbose_name="Описание мероприятия"
     )
     start_time = models.DateTimeField(
-        verbose_name="Дата и время начала"
+        verbose_name="Дата и время начала",
+        null=False,
+        default=timezone.now()
     )
     end_time = models.DateTimeField(
-        verbose_name="Дата и время окончания"
+        verbose_name="Дата и время окончания",
+        null=True
     )
     speakers = models.ManyToManyField(
         Speaker,
