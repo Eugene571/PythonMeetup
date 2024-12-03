@@ -1,18 +1,40 @@
 from telegram._update import Update
-from telegram._inline.inlinekeyboardbutton import InlineKeyboardButton
-from telegram._inline.inlinekeyboardmarkup import  InlineKeyboardMarkup
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, MessageHandler, filters, ContextTypes
 import logging
+import os
+import django
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'PythonMeetup.settings')
+django.setup()
+from asgiref.sync import sync_to_async
+from django.utils import timezone
+from django.utils.timezone import localdate
+from dotenv import load_dotenv
+from Meetup.models import User, Event, Speaker, Question
+import gunicorn
 
 # Настройка логирования
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
+def get_today_events():
+    event_list = Event.objects.filter(start_time__date=localdate())
+    events_text = ""
+    for event in event_list:
+        events_text += f"Название: {event.title}\nДата начала: {event.start_time}\n\n"
+    return events_text
+
+
+@sync_to_async
+def get_today_events_async():
+    return get_today_events()
+
+
 registered_users = {'karaman56', '@eugenedow'}  # Пример зарегистрированных пользователей
 user_ids = set()  # для хранения идентификаторов пользователей
 user_states = {}  # для хранения состояния пользователей
-reports = ['Бухать под селедочку', 'Бухать по черному']
+reports = get_today_events()
 waiting_for_question = set()  # Пользователи, ожидающие ввода вопроса
 
 
@@ -117,8 +139,9 @@ async def show_menu_for_user(user_id: int, message, context: ContextTypes.DEFAUL
 
 
 def main():
-    TOKEN = '7825479539:AAHTshs9UnHl3Rih2DNol6NFnEj-q5K7UrE'
-    application = Application.builder().token(TOKEN).build()
+    load_dotenv()
+    tg_bot_key = os.getenv('TG_BOT_KEY')
+    application = Application.builder().token(tg_bot_key).build()
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("register", register))
     application.add_handler(CallbackQueryHandler(button_handler))
