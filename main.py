@@ -20,7 +20,10 @@ logger = logging.getLogger(__name__)
 
 @sync_to_async
 def fetch_schedule():
-    events = Event.objects.filter(start_time__date=localdate())
+    today_start = timezone.localtime().replace(hour=0, minute=0, second=0, microsecond=0)
+    today_end = today_start + timezone.timedelta(days=1)
+
+    events = Event.objects.filter(start_time__gte=today_start, start_time__lt=today_end)
     if not events.exists():
         return "Сегодня нет запланированных мероприятий."
 
