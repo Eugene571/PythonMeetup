@@ -1,2 +1,2 @@
-web: python manage.py runserver
+web: gunicorn PythonMeetup.wsgi:application
 worker: python bot.py
