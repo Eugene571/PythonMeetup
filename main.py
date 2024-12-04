@@ -1,9 +1,14 @@
+from django.utils.timezone import now
+import logging
+
+
 from telegram._update import Update
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, MessageHandler, filters, ContextTypes
 import logging
 import os
 import django
+
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'PythonMeetup.settings')
 django.setup()
 from asgiref.sync import sync_to_async
@@ -16,6 +21,25 @@ import gunicorn
 # Настройка логирования
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+
+@sync_to_async
+def fetch_schedule():
+    today_start = timezone.localtime().replace(hour=0, minute=0, second=0, microsecond=0)
+    today_end = today_start + timezone.timedelta(days=1)
+
+    events = Event.objects.filter(start_time__gte=today_start, start_time__lt=today_end)
+    if not events.exists():
+        return "Сегодня нет запланированных мероприятий."
+
+    schedule_text = "Вот расписание на сегодня:\n\n"
+    for event in events:
+        schedule_text += (
+            f"Название: {event.title}\n"
+            f"Дата начала: {event.start_time.strftime('%Y-%m-%d %H:%M')}\n"
+            f"Описание: {event.description}\n\n"
+        )
+    return schedule_text
 
 
 def get_today_events():
@@ -87,7 +111,8 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         username = query.from_user.username
 
         if query.data == 'schedule':
-            await query.edit_message_text(text=f"Вот расписание докладов: {reports}")
+            schedule_text = await fetch_schedule()
+            await query.edit_message_text(text=schedule_text)
         elif query.data == 'start_talk':
             await query.edit_message_text(text="Вы начали доклад!")
             await notify_all_users(context, f"Докладчик {username} начал доклад!")
@@ -152,3 +177,6 @@ def main():
 
 if __name__ == '__main__':
     main()
+    logging.basicConfig(level=logging.INFO)
+    logger = logging.getLogger(__name__)
+    logger.info(f"Current time: {now()}")

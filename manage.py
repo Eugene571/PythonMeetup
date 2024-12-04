@@ -2,6 +2,7 @@
 """Django's command-line utility for administrative tasks."""
 import os
 import sys
+from django.utils.timezone import now, localtime
 
 
 def main():
@@ -20,3 +21,5 @@ def main():
 
 if __name__ == '__main__':
     main()
+    print(f"Серверное время (UTC): {now()}")
+    print(f"Локальное время: {localtime()}")

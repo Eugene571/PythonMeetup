@@ -25,9 +25,9 @@ SECRET_KEY = 'django-insecure-y=m=$bx*3a!=7()0vmcmja*b51y%#$4o%1z#vfh0cce=2-#dzq
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['*']
 
-
+CSRF_TRUSTED_ORIGINS = ['https://b661-94-188-68-28.ngrok-free.app', 'http://localhost:8000']
 # Application definition
 
 INSTALLED_APPS = [
@@ -37,7 +37,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'Meetup',
+    'Meetup'
 ]
 
 MIDDLEWARE = [
@@ -107,9 +107,6 @@ AUTH_PASSWORD_VALIDATORS = [
 LANGUAGE_CODE = 'en-us'
 
 TIME_ZONE = 'UTC'
-
-USE_I18N = True
-
 USE_TZ = True
 
 
@@ -122,3 +119,5 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+STATIC_ROOT = BASE_DIR / 'staticfiles'

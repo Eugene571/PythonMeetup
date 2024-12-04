@@ -100,7 +100,6 @@ class Event(models.Model):
     start_time = models.DateTimeField(
         verbose_name="Дата и время начала",
         null=False,
-        default=timezone.now()
     )
     end_time = models.DateTimeField(
         verbose_name="Дата и время окончания",
