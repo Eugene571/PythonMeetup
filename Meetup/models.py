@@ -28,6 +28,13 @@ class User(models.Model):
         verbose_name="Является ли пользователь докладчиком"
     )
 
+    def save(self, *args, **kwargs):
+        # Если пользователь становится докладчиком, проверяем, существует ли Speaker
+        if self.is_speaker:
+            if not Speaker.objects.filter(user=self).exists():
+                Speaker.objects.create(user=self, name=self.username)
+        super().save(*args, **kwargs)
+
     def __str__(self) -> str:
         return f"{self.username} - {self.telegram_id}"
 

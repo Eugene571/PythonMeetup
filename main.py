@@ -21,6 +21,13 @@ logger = logging.getLogger(__name__)
 
 
 @sync_to_async
+def refresh_user_states():
+    users = User.objects.all()
+    for user in users:
+        user_states[user.telegram_id] = 'speaker' if user.is_speaker else 'listener'
+
+
+@sync_to_async
 def fetch_schedule():
     # Используем UTC для вычисления времени начала и конца сегодняшнего дня
     today_start = timezone.now().replace(hour=0, minute=0, second=0, microsecond=0)
@@ -54,7 +61,7 @@ def get_today_events_async():
     return get_today_events()
 
 
-registered_users = {'karaman56', '@eugenedow'}  # Пример зарегистрированных пользователей
+registered_users = {'karaman56', 'eugenedow', }  # Пример зарегистрированных пользователей
 user_ids = set()  # для хранения идентификаторов пользователей
 user_states = {}  # для хранения состояния пользователей
 reports = get_today_events()
@@ -62,21 +69,44 @@ waiting_for_question = set()  # Пользователи, ожидающие в�
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await refresh_user_states()
     await update.message.reply_text('Привет! Используйте команду /register для регистрации.')
 
 
 async def register(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_name = update.effective_user.username
     user_id = update.effective_user.id
-    user_ids.add(user_id)
 
-    if user_name in registered_users:
-        await update.message.reply_text('Вы уже зарегистрированы! Перевожу вас в меню докладчика...')
-        user_states[user_id] = 'speaker'  # Устанавливаем состояние как докладчик
+    # Создание или обновление пользователя в базе данных
+    user, created = await sync_to_async(User.objects.get_or_create)(
+        telegram_id=user_id,
+        defaults={'tg_nick': user_name, 'username': user_name}
+    )
+
+    if not created:
+        # Обновляем информацию о пользователе, если он уже существует
+        user.tg_nick = user_name
+        user.username = user_name
+        await sync_to_async(user.save)()
+
+    # Проверка и создание объекта Speaker, если это необходимо
+    if user.is_speaker and not hasattr(user, 'speaker'):
+        await sync_to_async(Speaker.objects.create)(user=user, name=user.username)
+
+    # Устанавливаем актуальное состояние пользователя
+    user_states[user_id] = 'speaker' if user.is_speaker else 'listener'
+
+    # Отправляем сообщение пользователю в зависимости от его статуса
+    if user.is_speaker:
+        await update.message.reply_text(
+            'Вы уже зарегистрированы как докладчик. Перевожу вас в меню докладчика...'
+        )
     else:
         await update.message.reply_text(
-            'Вы успешно зарегистрированы! Здесь вы можете слушать доклады и задать вопросы.')
-        user_states[user_id] = 'listener'  # Устанавливаем состояние как слушатель
+            'Вы зарегистрированы как слушатель. Здесь вы можете слушать доклады и задавать вопросы.'
+        )
+
+    # Показать меню в зависимости от статуса пользователя
     await show_menu_for_user(user_id, update.message, context)
 
 
@@ -135,8 +165,11 @@ async def text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         # Отправляем вопрос докладчику и всем другим пользователям
         message = f"Вопрос от {username}: {question}"
         await notify_all_users(context, message)
-        waiting_for_question.remove(user_id)
-        await update_menus_for_all_users(context)
+        waiting_for_question.remove(user_id)  # Убираем пользователя из ожидания
+        await update_menus_for_all_users(context)  # Обновляем меню
+    else:
+        # Обработать случай, когда пользователь не ожидает вопрос
+        await update.message.reply_text('Вы не находитесь в процессе задавания вопроса.')
 
 
 async def notify_all_users(context: ContextTypes.DEFAULT_TYPE, message: str):
