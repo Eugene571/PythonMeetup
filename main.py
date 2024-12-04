@@ -1,3 +1,6 @@
+from django.utils.timezone import now
+import logging
+
 from telegram._update import Update
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, MessageHandler, filters, ContextTypes
@@ -168,8 +171,10 @@ def main():
     application.add_handler(
         MessageHandler(filters.TEXT & ~filters.COMMAND, text_handler))
     application.run_polling()
-
+    
 
 if __name__ == '__main__':
     main()
-
+    logging.basicConfig(level=logging.INFO)
+    logger = logging.getLogger(__name__)
+    logger.info(f"Current time: {now()}")
