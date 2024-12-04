@@ -1,2 +1,2 @@
 web: gunicorn PythonMeetup.wsgi:application
-worker: python bot.py
+worker: python main.py
