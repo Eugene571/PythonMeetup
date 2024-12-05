@@ -107,10 +107,10 @@ async def register(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
     # Показать меню в зависимости от статуса пользователя
-    await show_menu_for_user(user_id, update.message, context)
+    await show_menu_for_user(user_id, context)
 
 
-async def show_speaker_menu(chat_id, context: ContextTypes.DEFAULT_TYPE) -> None:
+async def show_speaker_menu(user_id: int, context: ContextTypes.DEFAULT_TYPE) -> None:
     keyboard = [
         [InlineKeyboardButton("Расписание докладов", callback_data='schedule')],
         [InlineKeyboardButton("Начать доклад", callback_data='start_talk')],
@@ -118,17 +118,17 @@ async def show_speaker_menu(chat_id, context: ContextTypes.DEFAULT_TYPE) -> None
         [InlineKeyboardButton("Задать вопрос", callback_data='question_talk')]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
-    await context.bot.send_message(chat_id=chat_id, text='Вы в меню докладчика! Выберите действие:',
+    await context.bot.send_message(chat_id=user_id, text='Вы в меню докладчика! Выберите действие:',
                                    reply_markup=reply_markup)
 
 
-async def show_listener_menu(chat_id, context: ContextTypes.DEFAULT_TYPE) -> None:
+async def show_listener_menu(user_id: int, context: ContextTypes.DEFAULT_TYPE) -> None:
     keyboard = [
         [InlineKeyboardButton("Расписание докладов", callback_data='schedule')],
         [InlineKeyboardButton("Задать вопрос", callback_data='question_talk')]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
-    await context.bot.send_message(chat_id=chat_id, text='Вы в меню слушателя!', reply_markup=reply_markup)
+    await context.bot.send_message(chat_id=user_id, text='Вы в меню слушателя!', reply_markup=reply_markup)
 
 
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -142,18 +142,26 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         if query.data == 'schedule':
             schedule_text = await fetch_schedule()
             await query.edit_message_text(text=schedule_text)
+            await show_menu_for_user(user_id, context)
+
         elif query.data == 'start_talk':
             await query.edit_message_text(text="Вы начали доклад!")
             await notify_all_users(context, f"Докладчик {username} начал доклад!")
+            user_states[user_id] = 'speaker'
+            await show_menu_for_user(user_id, context)
+
         elif query.data == 'end_talk':
             await query.edit_message_text(text="Вы закончили доклад!")
             await notify_all_users(context, f"Докладчик {username} закончил доклад!")
+            user_states[user_id] = 'listener'
+            await show_menu_for_user(user_id, context)
+
         elif query.data == 'question_talk':
             await query.edit_message_text(text="Какой у вас вопрос?")
             waiting_for_question.add(user_id)
-            return  # текущий пользователь вводит вопрос
-        # После любого действия, обновляем меню для всех
-        await update_menus_for_all_users(context)
+            return  # Текущий пользователь вводит вопрос
+
+
 
 
 async def text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -167,18 +175,26 @@ async def text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         await notify_all_users(context, message)
         waiting_for_question.remove(user_id)  # Убираем пользователя из ожидания
         await update_menus_for_all_users(context)  # Обновляем меню
+        await show_menu_for_user(user_id, context)
     else:
         # Обработать случай, когда пользователь не ожидает вопрос
         await update.message.reply_text('Вы не находитесь в процессе задавания вопроса.')
 
 
-async def notify_all_users(context: ContextTypes.DEFAULT_TYPE, message: str):
-    for user_id in user_ids:
-        try:
-            await context.bot.send_message(chat_id=user_id, text=message)
-        except Exception as e:
-            logger.error(f"Ошибка при отправке сообщения пользователю {user_id}: {e}")
+@sync_to_async
+def get_users():
+    return list(User.objects.all())
 
+# Асинхронная функция для уведомления всех пользователей
+async def notify_all_users(context: ContextTypes.DEFAULT_TYPE, message: str):
+    # Получаем пользователей асинхронно
+    users = await get_users()  # Прямо используем get_users
+    for user in users:
+        try:
+            # Отправляем сообщение Telegram
+            await context.bot.send_message(chat_id=user.telegram_id, text=message)
+        except Exception as e:
+            logger.error(f"Ошибка при отправке сообщения пользователю {user.telegram_id}: {e}")
 
 async def update_menus_for_all_users(context: ContextTypes.DEFAULT_TYPE):
     for user_id in user_ids:
@@ -188,11 +204,11 @@ async def update_menus_for_all_users(context: ContextTypes.DEFAULT_TYPE):
             await show_listener_menu(user_id, context)
 
 
-async def show_menu_for_user(user_id: int, message, context: ContextTypes.DEFAULT_TYPE) -> None:
+async def show_menu_for_user(user_id: int, context: ContextTypes.DEFAULT_TYPE) -> None:
     if user_states.get(user_id) == 'speaker':
-        await show_speaker_menu(message.chat_id, context)
+        await show_speaker_menu(user_id, context)
     else:
-        await show_listener_menu(message.chat_id, context)
+        await show_listener_menu(user_id, context)
 
 
 def main():
