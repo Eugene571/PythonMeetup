@@ -27,12 +27,19 @@ sh git clone https://github.com/your-username/your-repo-name.git cd your-repo-na
 ```
 pip install -r requirements.txt
 ```
-3. Замените `'YOUR_TOKEN_HERE'` в функции `main()` на ваш действительный токен Telegram-бота.
+3. Создайте в корне .env файл, с указанием переменной `TG_BOT_KEY`
 
 ### Использование
 
 Запустите бота:
-`python main.py`
+```python
+python main.py
+```
+
+Для создания и редактирования объектов запустите админку Django:
+```python
+python manage.py runserver
+```
 
 ## Обзор кода
 
